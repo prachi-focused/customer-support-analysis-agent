@@ -1,0 +1,7 @@
+Transcript 07
+Customer: Can I get a refund for tomorrow's show?
+Chatbot: Refunds are allowed up to 1 hour before showtime. What is your booking ID?
+Customer: 99210
+Chatbot: Your request is within the allowed window. I can process the refund.
+Customer: Yes please.
+Chatbot: Your refund has been initiated.

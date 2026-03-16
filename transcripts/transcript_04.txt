@@ -1,0 +1,6 @@
+Transcript 04
+Customer: I was charged twice for the same booking.
+Chatbot: I'm sorry about that. Let me check the payment record.
+Chatbot: I cannot verify duplicate payments. Would you like to speak with an agent?
+Customer: Yes please.
+Human Agent: I can confirm there were two charges. One will be automatically refunded in 3–5 days.

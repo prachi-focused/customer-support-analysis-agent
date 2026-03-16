@@ -1,0 +1,10 @@
+Customer Support Process
+
+1. Chatbot gets the order 
+2. Chatbot asks the user what action they want to perform - get invoice, get email confirmation, check status, cancel order, refund status, none of these.
+3. If the chatbot cannot resolve the issue, the conversation is escalated to a human agent.
+4. Support agents verify booking details before issuing refunds or changes.
+5. Support agents must understand the query and create a ticket.
+6. User needs to be authenticated via mobile number
+7. If issue is taking too long then support can ask if the user wants a call back once resolved instead of waiting around for resolution.
+8. Once resolved, ask if the user has more issues that need resolution.
