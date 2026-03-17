@@ -1,5 +1,0 @@
-Transcript 06
-Customer: The seat I booked is already occupied.
-Chatbot: I'm sorry to hear that. Did you arrive after the show started?
-Customer: No, right on time.
-Chatbot: Please speak to theater staff for seat reassignment or refund assistance.

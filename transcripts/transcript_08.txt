@@ -1,8 +1,0 @@
-Transcript 08
-Customer: The website crashed while I was buying tickets and now I don't know if it worked.
-Chatbot: Did you receive a confirmation email?
-Customer: No.
-Chatbot: Please check your bank statement for a pending charge.
-Customer: I see a charge.
-Chatbot: I will connect you to a human agent to verify the booking.
-Human Agent: I found the booking and resent the confirmation email.

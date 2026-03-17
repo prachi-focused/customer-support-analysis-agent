@@ -1,8 +1,0 @@
-Transcript 01
-Customer: Hi, I bought tickets for tonight but I never received the confirmation email.
-Chatbot: I can help with that. Could you provide the email used for the purchase?
-Customer: prachi@example.com
-Chatbot: I cannot find a booking with that email. Would you like me to connect you to an agent?
-Customer: Yes please.
-Human Agent: Hi, I see your payment went through but the confirmation email failed. I'm resending it now.
-Customer: Got it, thanks!

@@ -1,7 +1,0 @@
-Website FAQ
-
-Q: Where can I find my tickets?
-A: Tickets appear under the 'My Tickets' section of the app.
-
-Q: Why didn't my promo code work?
-A: Promo codes may apply only to specific showtimes or days.

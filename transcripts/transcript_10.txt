@@ -1,6 +1,0 @@
-Transcript 10
-Customer: I used a promo code but it didn't apply.
-Chatbot: Promo codes apply only to weekday showings.
-Customer: This was Friday night.
-Chatbot: That may be the reason the code failed.
-Customer: Oh ok.

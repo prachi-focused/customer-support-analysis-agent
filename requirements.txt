@@ -2,3 +2,12 @@ langgraph
 langchain_openai
 langchain_core
 python-dotenv
+langgraph
+langchain-openai
+langchain-core
+python-dotenv
+langgraph
+langchain-openai
+langchain-core
+python-dotenv
+ipython

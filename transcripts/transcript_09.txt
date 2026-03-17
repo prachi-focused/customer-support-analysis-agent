@@ -1,6 +1,0 @@
-Transcript 09
-Customer: I want to cancel my subscription pass.
-Chatbot: You can cancel your pass under account settings.
-Customer: I can't find that option.
-Chatbot: Let me connect you to an agent.
-Human Agent: I have canceled the subscription for you.

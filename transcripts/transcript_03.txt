@@ -1,7 +1,0 @@
-Transcript 03
-Customer: My membership pass says I should get a free ticket but the app charged me.
-Chatbot: Let me check the FAQ for membership benefits.
-Chatbot: It looks like the pass only applies to standard showings.
-Customer: This was a standard showing though.
-Chatbot: I will connect you to a human agent for further assistance.
-Human Agent: I see the issue. The pass was not applied due to a system bug. I will refund the charge.

@@ -1,6 +1,0 @@
-Transcript 05
-Customer: Where can I find my tickets in the app?
-Chatbot: Your tickets can be found under the 'My Tickets' section.
-Customer: I still don't see them.
-Chatbot: Please try refreshing the app or logging out and back in.
-Customer: That worked. Thanks.
