@@ -87,6 +87,7 @@ def transcript_analysis_node(state: dict) -> dict:
     LangGraph node: runs transcript analysis (up to MAX_CONCURRENCY in parallel),
     stores results in the local Postgres DB when available, and returns a state update.
     """
+    print("Running transcript analysis node...")
     transcript_ids = state.get("transcripts", ["transcript_01"])
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENCY) as executor:
         analysis = list(executor.map(analyze_transcript, transcript_ids))
