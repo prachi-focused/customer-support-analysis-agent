@@ -1,9 +1,12 @@
 from typing import Literal
+from concurrent.futures import ThreadPoolExecutor
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph.message import MessagesState
 from dotenv import load_dotenv
 from pydantic import BaseModel
+
+from db import store_transcript_analyses
 
 load_dotenv()
 
@@ -76,14 +79,23 @@ class CustomerSupportProcess(MessagesState):
     transcripts: list[str] = []
 
 
+MAX_CONCURRENCY = 5
+
+
 def transcript_analysis_node(state: dict) -> dict:
     """
-    LangGraph node: runs transcript analysis and returns a state update.
-    Expects state to contain 'transcripts' (list of transcript ids).
-    Returns state update with 'transcript_analysis' (list of TranscriptAnalysis).
+    LangGraph node: runs transcript analysis (up to MAX_CONCURRENCY in parallel),
+    stores results in the local Postgres DB when available, and returns a state update.
     """
     transcript_ids = state.get("transcripts", ["transcript_01"])
-    analysis = [analyze_transcript(tid) for tid in transcript_ids]
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENCY) as executor:
+        analysis = list(executor.map(analyze_transcript, transcript_ids))
+    try:
+        store_transcript_analyses([a.model_dump() for a in analysis])
+    except Exception as e:
+        # DB optional: run without Postgres (e.g. connection refused, no password)
+        import warnings
+        warnings.warn(f"Could not store analyses in DB (skipping): {e}", stacklevel=0)
     return {"transcript_analysis": analysis}
 
 

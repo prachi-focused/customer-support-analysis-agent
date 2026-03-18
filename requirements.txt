@@ -1,5 +1,6 @@
 langgraph
 langchain_openai
+psycopg2-binary
 langchain_core
 python-dotenv
 langgraph
