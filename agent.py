@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 from transcript_analysis import transcript_analysis_node, CustomerSupportProcess
 from policy_update import node_2_policy_update
+from generate_report import node_3_generate_report
 
 load_dotenv()
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -11,7 +12,7 @@ model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 message = [HumanMessage(content="Analyze the transcript and return the analysis.", role="user")]
 
 
-def human_policy_router(state: dict) -> str:
+def policy_update_router(state: dict) -> str:
     """
     After transcript analysis: route by human input only (nothing written to state).
     Returns the next node name or END.
@@ -22,24 +23,23 @@ def human_policy_router(state: dict) -> str:
         raw = input("Update policy store? (yes/no): ").strip().lower()
     if raw in ("yes", "y"):
         return "node_2_policy_update"
-    return "done"
+    return "node_3_generate_report"
 
 
 builder = StateGraph(CustomerSupportProcess)
 builder.add_node("node_1_transcript_analysis", transcript_analysis_node)
 builder.add_node("node_2_policy_update", node_2_policy_update)
+builder.add_node("node_3_generate_report", node_3_generate_report)
 
 builder.add_edge(START, "node_1_transcript_analysis")
 
 builder.add_conditional_edges(
     "node_1_transcript_analysis",
-    human_policy_router,
-    {
-        "node_2_policy_update": "node_2_policy_update", 
-        "done": END
-    },
+    policy_update_router,
 )
-builder.add_edge("node_2_policy_update", END)
+builder.add_edge("node_2_policy_update", "node_3_generate_report")
+builder.add_edge("node_3_generate_report", END)
+
 graph = builder.compile()
 
 # Invoke with messages and optional transcripts list

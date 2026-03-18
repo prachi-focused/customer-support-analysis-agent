@@ -1,10 +1,20 @@
 """
-Database configuration and functions for storing/querying transcript analyses.
-Any node (in transcript_analysis.py or another file) can import from here.
+Database: transcript analyses + policy chunk embeddings (pgvector).
 
-Configure via environment: DATABASE_URL or POSTGRES_* vars (host, port, db, user, password).
+Configure via DATABASE_URL or POSTGRES_* (host, port, db, user, password).
+Policy table needs `CREATE EXTENSION vector` once — see SETUP_DB.md.
 """
-__all__ = ["store_transcript_analyses", "get_transcript_analyses"]
+__all__ = [
+    "store_transcript_analyses",
+    "get_transcript_analyses",
+    "store_policy_chunk_embeddings",
+    "search_similar_policy_chunks",
+]
+
+# OpenAI text-embedding-3-small / ada-002
+POLICY_EMBEDDING_DIMENSIONS = 1536
+POLICY_SOURCE_DOCX = "policy_docx"
+POLICY_SOURCE_TXT = "policy_txt"
 
 import json
 import os
@@ -66,6 +76,46 @@ def _ensure_table(conn):
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
         """)
+
+
+def _ensure_policy_chunks_table(conn):
+    """
+    Policy RAG chunks. Requires pgvector installed on the server and extension enabled.
+    """
+    with conn.cursor() as cur:
+        try:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        except Exception as e:
+            raise RuntimeError(
+                "Enable pgvector on this database first:\n"
+                "  brew install pgvector\n"
+                "  psql -d customer_support -c 'CREATE EXTENSION vector;'\n"
+                f"(Original error: {e})"
+            ) from e
+        cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS policy_chunks (
+                id SERIAL PRIMARY KEY,
+                embedding vector({POLICY_EMBEDDING_DIMENSIONS}) NOT NULL,
+                source TEXT NOT NULL,
+                document_name TEXT NOT NULL,
+                section_heading TEXT NOT NULL DEFAULT '',
+                chunk_index INT NOT NULL,
+                uploaded_at TIMESTAMPTZ NOT NULL,
+                content TEXT NOT NULL
+            );
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS policy_chunks_document_idx
+            ON policy_chunks (document_name, chunk_index);
+            """
+        )
+
+
+def _vector_param(embedding: list[float]) -> str:
+    return "[" + ",".join(str(float(x)) for x in embedding) + "]"
 
 
 # -----------------------------------------------------------------------------
@@ -158,3 +208,91 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     for a in analyses
                 ],
             )
+
+
+def store_policy_chunk_embeddings(
+    rows: list[dict],
+    embeddings: list[list[float]],
+    *,
+    source: str = POLICY_SOURCE_TXT,
+) -> None:
+    """
+    Replace existing chunks for the same (source, document_name) then insert.
+    Each row: content, document_name, section_heading, chunk_index, uploaded_at (datetime).
+    """
+    if not rows or len(rows) != len(embeddings):
+        return
+    if any(len(e) != POLICY_EMBEDDING_DIMENSIONS for e in embeddings):
+        raise ValueError(
+            f"Embeddings must have dimension {POLICY_EMBEDDING_DIMENSIONS} "
+            "(use text-embedding-3-small or matching model)."
+        )
+    doc_names = list({r["document_name"] for r in rows})
+    with _connection() as conn:
+        _ensure_policy_chunks_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM policy_chunks WHERE source = %s AND document_name = ANY(%s)",
+                (source, doc_names),
+            )
+            for row, emb in zip(rows, embeddings):
+                cur.execute(
+                    """
+                    INSERT INTO policy_chunks (
+                        embedding, source, document_name, section_heading,
+                        chunk_index, uploaded_at, content
+                    ) VALUES (%s::vector, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        _vector_param(emb),
+                        source,
+                        row["document_name"],
+                        row.get("section_heading") or "",
+                        int(row["chunk_index"]),
+                        row["uploaded_at"],
+                        row["content"],
+                    ),
+                )
+
+
+def search_similar_policy_chunks(
+    query_embedding: list[float],
+    *,
+    limit: int = 8,
+    source: str | None = POLICY_SOURCE_TXT,
+) -> list[dict]:
+    """
+    Cosine distance via pgvector (<=>). Returns chunks with metadata for citations.
+    """
+    if len(query_embedding) != POLICY_EMBEDDING_DIMENSIONS:
+        raise ValueError(f"Query embedding dim must be {POLICY_EMBEDDING_DIMENSIONS}")
+    with _connection() as conn:
+        _ensure_policy_chunks_table(conn)
+        with conn.cursor() as cur:
+            if source:
+                cur.execute(
+                    """
+                    SELECT document_name, section_heading, chunk_index, content,
+                           uploaded_at, source,
+                           (embedding <=> %s::vector) AS distance
+                    FROM policy_chunks
+                    WHERE source = %s
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (_vector_param(query_embedding), source, _vector_param(query_embedding), limit),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT document_name, section_heading, chunk_index, content,
+                           uploaded_at, source,
+                           (embedding <=> %s::vector) AS distance
+                    FROM policy_chunks
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (_vector_param(query_embedding), _vector_param(query_embedding), limit),
+                )
+            cols = [d.name for d in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
