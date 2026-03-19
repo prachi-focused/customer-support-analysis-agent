@@ -130,7 +130,7 @@ def _vector_param(embedding: list[float]) -> str:
 
 
 # -----------------------------------------------------------------------------
-# Public API: use these from any node (transcript_analysis.py or other files)
+# Public API: use these from any node (e.g. transcript_analysis module or other files)
 # -----------------------------------------------------------------------------
 
 def get_transcript_analyses(
@@ -179,7 +179,8 @@ def get_transcript_analyses(
 def store_transcript_analyses(analyses: list[dict]) -> None:
     """
     Upsert transcript analysis records: if transcript_id is not in the DB, insert;
-    else update the existing row. Each item must match TranscriptAnalysis model_dump().
+    else update the existing row. Each item must match TranscriptAnalysis.model_dump()
+    (see state.transcript_analysis_schema).
     """
     if not analyses:
         return

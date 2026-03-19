@@ -2,7 +2,8 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
-from transcript_analysis import transcript_analysis_node, CustomerSupportProcess
+from state import CustomerSupportProcess
+from transcript_analysis import transcript_analysis_node
 from policy_update import node_2_policy_update
 from calculate_metrics import node_3_calculate_metrics
 from generate_report import node_4_generate_report
@@ -64,16 +65,16 @@ transcripts = [
     "transcript_10"
 ]
 response = graph.invoke({"messages": message, "transcripts": transcripts})
-for analysis in response["transcript_analysis"]:
-    print("-" * 100)
-    print("Transcript Analysis:")
-    print(f"Transcript ID: {analysis.transcriptId}")
-    print(f"Issues Identified: {analysis.issuesIdentified}")
-    print(f"Issue identification time: {analysis.issueIdentificationTime}s")
-    print(f"Summary: {analysis.summary_of_issue}")
-    print(f"Issue identified by chatbot: {analysis.issueIdentifiedByChatbot} | by human: {analysis.issueIdentifiedByHumanAgent}")
-    print(f"Time with chatbot: {analysis.time_spent_with_chatbot_seconds}s | with human: {analysis.time_spent_with_human_seconds}s | waiting: {analysis.time_spent_waiting_seconds}s")
-    print(f"Resolution: {analysis.resolution_stage} | User sentiment: {analysis.user_sentiment}")
-    print(f"Stage chatbot failed: {analysis.stage_chatbot_failed} | Stage human failed: {analysis.stage_human_failed}")
-    print(f"Reason failed: {analysis.reason_failed_to_resolve} | What could fix: {analysis.what_could_fix}")
-    print("-" * 100)
+# for analysis in response["transcript_analysis"]:
+#     print("-" * 100)
+#     print("Transcript Analysis:")
+#     print(f"Transcript ID: {analysis.transcriptId}")
+#     print(f"Issues Identified: {analysis.issuesIdentified}")
+#     print(f"Issue identification time: {analysis.issueIdentificationTime}s")
+#     print(f"Summary: {analysis.summary_of_issue}")
+#     print(f"Issue identified by chatbot: {analysis.issueIdentifiedByChatbot} | by human: {analysis.issueIdentifiedByHumanAgent}")
+#     print(f"Time with chatbot: {analysis.time_spent_with_chatbot_seconds}s | with human: {analysis.time_spent_with_human_seconds}s | waiting: {analysis.time_spent_waiting_seconds}s")
+#     print(f"Resolution: {analysis.resolution_stage} | User sentiment: {analysis.user_sentiment}")
+#     print(f"Stage chatbot failed: {analysis.stage_chatbot_failed} | Stage human failed: {analysis.stage_human_failed}")
+#     print(f"Reason failed: {analysis.reason_failed_to_resolve} | What could fix: {analysis.what_could_fix}")
+#     print("-" * 100)
