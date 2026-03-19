@@ -3,10 +3,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 from state import CustomerSupportProcess
-from transcript_analysis import transcript_analysis_node
-from policy_update import node_2_policy_update
-from calculate_metrics import node_3_calculate_operations_metrics
-from generate_report import node_4_generate_report
+from node_1_transcript_analysis import node_1_transcript_analysis
+from node_2_policy_update import node_2_policy_update
+from node_3_calculate_operations_metrics import node_3_calculate_operations_metrics
+from node_4_calculate_failure_metrics import node_4_calculate_failure_metrics
+from node_5_generate_report import node_5_generate_report
 
 load_dotenv()
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -33,10 +34,11 @@ def policy_update_router(state: dict) -> str:
 
 
 builder = StateGraph(CustomerSupportProcess)
-builder.add_node("node_1_transcript_analysis", transcript_analysis_node)
+builder.add_node("node_1_transcript_analysis", node_1_transcript_analysis)
 builder.add_node("node_2_policy_update", node_2_policy_update)
 builder.add_node("node_3_calculate_operations_metrics", node_3_calculate_operations_metrics)
-builder.add_node("node_4_generate_report", node_4_generate_report)
+builder.add_node("node_4_calculate_failure_metrics", node_4_calculate_failure_metrics)
+builder.add_node("node_5_generate_report", node_5_generate_report)
 
 builder.add_edge(START, "node_1_transcript_analysis")
 
@@ -46,8 +48,9 @@ builder.add_conditional_edges(
 )
 
 builder.add_edge("node_2_policy_update", "node_3_calculate_operations_metrics")
-builder.add_edge("node_3_calculate_operations_metrics", "node_4_generate_report")
-builder.add_edge("node_4_generate_report", END)
+builder.add_edge("node_3_calculate_operations_metrics", "node_4_calculate_failure_metrics")
+builder.add_edge("node_4_calculate_failure_metrics", "node_5_generate_report")
+builder.add_edge("node_5_generate_report", END)
 
 graph = builder.compile()
 

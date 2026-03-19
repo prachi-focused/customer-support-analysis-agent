@@ -130,7 +130,7 @@ def _vector_param(embedding: list[float]) -> str:
 
 
 # -----------------------------------------------------------------------------
-# Public API: use these from any node (e.g. transcript_analysis module or other files)
+# Public API: use these from any node (e.g. node_1_transcript_analysis or other files)
 # -----------------------------------------------------------------------------
 
 def get_transcript_analyses(

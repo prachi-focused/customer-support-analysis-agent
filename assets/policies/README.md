@@ -16,7 +16,7 @@ Use lines like `# Title` or `## Section` so sections are labeled correctly in Q&
 ### Run ingest
 
 ```bash
-python -c "from policy_update import run_policy_ingest_pipeline; print(run_policy_ingest_pipeline())"
+python -c "from node_2_policy_update import run_policy_ingest_pipeline; print(run_policy_ingest_pipeline())"
 ```
 
 Or run the agent and choose **yes** to update the policy store.

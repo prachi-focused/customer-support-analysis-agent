@@ -11,3 +11,4 @@ class CustomerSupportProcess(MessagesState):
     transcript_analysis: list[TranscriptAnalysis] = []
     transcripts: list[str] = []
     operations_metrics: dict = {}
+    failure_metrics: dict = {}

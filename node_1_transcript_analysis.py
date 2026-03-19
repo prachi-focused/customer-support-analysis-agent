@@ -60,7 +60,7 @@ def analyze_transcript(transcript: str) -> TranscriptAnalysis:
 MAX_CONCURRENCY = 5
 
 
-def transcript_analysis_node(state: dict) -> dict:
+def node_1_transcript_analysis(state: dict) -> dict:
     """
     LangGraph node: runs transcript analysis (up to MAX_CONCURRENCY in parallel),
     stores results in the local Postgres DB when available, and returns a state update.

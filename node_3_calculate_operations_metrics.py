@@ -89,21 +89,18 @@ def compute_operations_metrics(analyses: list[Any]) -> dict[str, Any]:
 
 
 def node_3_calculate_operations_metrics(state: dict) -> dict:
-    print("Calculating metrics.......")
+    print("Calculating operations metrics.......")
     analyses = state.get("transcript_analysis") or []
 
     try:
-        
         operations_metrics = compute_operations_metrics(analyses)
-
         print("----------->>>>>><<<<<<<-------------")
         print(operations_metrics)
-
-    except Exception as e:
-        print("----------->>>>>><<<<<<<-------------")
-        operations_metrics = 'Error: ' + str(e)
         
-    return {
-        "operations_metrics": operations_metrics,
-    }
+    except Exception as e:
+        operations_metrics = {
+            "error": str(e),
+        }
+
+    return {"operations_metrics": operations_metrics}
 

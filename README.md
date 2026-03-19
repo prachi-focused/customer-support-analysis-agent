@@ -81,7 +81,7 @@ Flow:
 | Command | Purpose |
 |---------|---------|
 | `python view_db.py` | List rows in `transcript_analyses` |
-| `python -c "from policy_update import run_policy_ingest_pipeline; print(run_policy_ingest_pipeline())"` | Ingest policies only |
+| `python -c "from node_2_policy_update import run_policy_ingest_pipeline; print(run_policy_ingest_pipeline())"` | Ingest policies only |
 
 ---
 
@@ -89,11 +89,13 @@ Flow:
 
 | Path | Role |
 |------|------|
-| `agent.py` | LangGraph: transcript → policy? → report |
-| `transcript_analysis.py` | Transcript LLM + DB write |
-| `policy_update.py` | Policy TXT ingest + embeddings |
+| `agent.py` | LangGraph: transcript → policy? → metrics → report |
+| `node_1_transcript_analysis.py` | Transcript LLM + DB write |
+| `node_2_policy_update.py` | Policy TXT ingest + embeddings |
+| `node_3_calculate_operations_metrics.py` | Operations / resolution KPIs |
+| `node_4_calculate_failure_metrics.py` | Failure reason + sentiment metrics |
+| `node_5_generate_report.py` | Report node stub |
 | `db.py` | Postgres helpers |
-| `report.py` | Report node stub |
 | `SETUP_DB.md` | **Database & pgvector setup** |
 | `assets/transcripts/` | Input transcripts |
 | `assets/policies/` | Policy `.txt` files |
