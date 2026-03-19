@@ -14,12 +14,10 @@ def main():
     p = argparse.ArgumentParser(description="View transcript analyses in the DB")
     p.add_argument("--limit", type=int, default=50, help="Max rows to show (default 50)")
     p.add_argument("--resolution", type=str, help="Filter by resolution_stage")
-    p.add_argument("--bottleneck", type=str, help="Filter by bottleneck_category")
     args = p.parse_args()
     try:
         rows = get_transcript_analyses(
             resolution_stage=args.resolution or None,
-            bottleneck_category=args.bottleneck or None,
             limit=args.limit,
         )
     except Exception as e:

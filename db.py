@@ -63,19 +63,30 @@ def _ensure_table(conn):
         cur.execute("""
             CREATE TABLE IF NOT EXISTS transcript_analyses (
                 id SERIAL PRIMARY KEY,
-                transcript_id TEXT NOT NULL,
+                transcript_id TEXT NOT NULL UNIQUE,
                 issues_identified JSONB NOT NULL DEFAULT '[]',
                 issue_identification_time DOUBLE PRECISION NOT NULL,
                 summary_of_issue TEXT NOT NULL,
                 issue_identified_by_chatbot BOOLEAN NOT NULL,
                 issue_identified_by_human_agent BOOLEAN NOT NULL,
+                time_spent_with_chatbot_seconds DOUBLE PRECISION NOT NULL,
+                time_spent_with_human_seconds DOUBLE PRECISION NOT NULL,
+                time_spent_waiting_seconds DOUBLE PRECISION NOT NULL,
                 resolution_stage TEXT NOT NULL,
-                time_spent_on_issue DOUBLE PRECISION NOT NULL,
-                bottleneck_category TEXT NOT NULL,
-                user_feedback TEXT NOT NULL,
+                user_sentiment TEXT NOT NULL,
+                point_chatbot_failed TEXT NOT NULL,
+                point_human_failed TEXT NOT NULL,
+                reason_failed_to_resolve TEXT NOT NULL,
+                what_could_fix TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
-        """)
+            """
+        )
+        # Ensure unique on transcript_id for upsert (idempotent for existing tables)
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS transcript_analyses_transcript_id_key "
+            "ON transcript_analyses (transcript_id);"
+        )
 
 
 def _ensure_policy_chunks_table(conn):
@@ -126,13 +137,11 @@ def get_transcript_analyses(
     *,
     transcript_ids: list[str] | None = None,
     resolution_stage: str | None = None,
-    bottleneck_category: str | None = None,
     limit: int | None = None,
 ) -> list[dict]:
     """
     Query stored transcript analyses from the DB. Optional filters.
-    Returns list of dicts with keys: transcript_id, issues_identified, summary_of_issue,
-    resolution_stage, bottleneck_category, user_feedback, time_spent_on_issue, etc.
+    Returns list of dicts with new schema (time_spent_*, user_sentiment, point_*_failed, etc.).
     """
     with _connection() as conn:
         _ensure_table(conn)
@@ -145,17 +154,17 @@ def get_transcript_analyses(
             if resolution_stage:
                 conditions.append("resolution_stage = %s")
                 params.append(resolution_stage)
-            if bottleneck_category:
-                conditions.append("bottleneck_category = %s")
-                params.append(bottleneck_category)
             where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
             limit_clause = f"LIMIT {int(limit)}" if limit is not None else ""
             cur.execute(
                 f"""
                 SELECT transcript_id, issues_identified, issue_identification_time,
                        summary_of_issue, issue_identified_by_chatbot,
-                       issue_identified_by_human_agent, resolution_stage,
-                       time_spent_on_issue, bottleneck_category, user_feedback, created_at
+                       issue_identified_by_human_agent,
+                       time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
+                       time_spent_waiting_seconds, resolution_stage, user_sentiment,
+                       point_chatbot_failed, point_human_failed,
+                       reason_failed_to_resolve, what_could_fix, created_at
                 FROM transcript_analyses
                 {where}
                 ORDER BY created_at DESC
@@ -169,9 +178,8 @@ def get_transcript_analyses(
 
 def store_transcript_analyses(analyses: list[dict]) -> None:
     """
-    Insert transcript analysis records into the local Postgres DB.
-    Each item in `analyses` must be a dict with keys matching TranscriptAnalysis
-    (e.g. from TranscriptAnalysis.model_dump()).
+    Upsert transcript analysis records: if transcript_id is not in the DB, insert;
+    else update the existing row. Each item must match TranscriptAnalysis model_dump().
     """
     if not analyses:
         return
@@ -183,14 +191,35 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                 INSERT INTO transcript_analyses (
                     transcript_id, issues_identified, issue_identification_time,
                     summary_of_issue, issue_identified_by_chatbot,
-                    issue_identified_by_human_agent, resolution_stage,
-                    time_spent_on_issue, bottleneck_category, user_feedback
+                    issue_identified_by_human_agent,
+                    time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
+                    time_spent_waiting_seconds, resolution_stage, user_sentiment,
+                    point_chatbot_failed, point_human_failed,
+                    reason_failed_to_resolve, what_could_fix
                 ) VALUES (
                     %(transcriptId)s, %(issuesIdentified)s::jsonb, %(issueIdentificationTime)s,
                     %(summary_of_issue)s, %(issueIdentifiedByChatbot)s,
-                    %(issueIdentifiedByHumanAgent)s, %(resolution_stage)s,
-                    %(time_spent_on_issue)s, %(bottleneck_category)s, %(user_feedback)s
+                    %(issueIdentifiedByHumanAgent)s,
+                    %(time_spent_with_chatbot_seconds)s, %(time_spent_with_human_seconds)s,
+                    %(time_spent_waiting_seconds)s, %(resolution_stage)s, %(user_sentiment)s,
+                    %(point_chatbot_failed)s, %(point_human_failed)s,
+                    %(reason_failed_to_resolve)s, %(what_could_fix)s
                 )
+                ON CONFLICT (transcript_id) DO UPDATE SET
+                    issues_identified = EXCLUDED.issues_identified,
+                    issue_identification_time = EXCLUDED.issue_identification_time,
+                    summary_of_issue = EXCLUDED.summary_of_issue,
+                    issue_identified_by_chatbot = EXCLUDED.issue_identified_by_chatbot,
+                    issue_identified_by_human_agent = EXCLUDED.issue_identified_by_human_agent,
+                    time_spent_with_chatbot_seconds = EXCLUDED.time_spent_with_chatbot_seconds,
+                    time_spent_with_human_seconds = EXCLUDED.time_spent_with_human_seconds,
+                    time_spent_waiting_seconds = EXCLUDED.time_spent_waiting_seconds,
+                    resolution_stage = EXCLUDED.resolution_stage,
+                    user_sentiment = EXCLUDED.user_sentiment,
+                    point_chatbot_failed = EXCLUDED.point_chatbot_failed,
+                    point_human_failed = EXCLUDED.point_human_failed,
+                    reason_failed_to_resolve = EXCLUDED.reason_failed_to_resolve,
+                    what_could_fix = EXCLUDED.what_could_fix
                 """,
                 [
                     {
@@ -200,10 +229,15 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                         "summary_of_issue": a.get("summary_of_issue", ""),
                         "issueIdentifiedByChatbot": bool(a.get("issueIdentifiedByChatbot", False)),
                         "issueIdentifiedByHumanAgent": bool(a.get("issueIdentifiedByHumanAgent", False)),
+                        "time_spent_with_chatbot_seconds": float(a.get("time_spent_with_chatbot_seconds", 0)),
+                        "time_spent_with_human_seconds": float(a.get("time_spent_with_human_seconds", 0)),
+                        "time_spent_waiting_seconds": float(a.get("time_spent_waiting_seconds", 0)),
                         "resolution_stage": a.get("resolution_stage", ""),
-                        "time_spent_on_issue": float(a.get("time_spent_on_issue", 0)),
-                        "bottleneck_category": a.get("bottleneck_category", ""),
-                        "user_feedback": a.get("user_feedback", ""),
+                        "user_sentiment": a.get("user_sentiment", "unknown"),
+                        "point_chatbot_failed": a.get("point_chatbot_failed", "not_applicable"),
+                        "point_human_failed": a.get("point_human_failed", "not_applicable"),
+                        "reason_failed_to_resolve": a.get("reason_failed_to_resolve", "not_applicable"),
+                        "what_could_fix": a.get("what_could_fix", "not_applicable"),
                     }
                     for a in analyses
                 ],

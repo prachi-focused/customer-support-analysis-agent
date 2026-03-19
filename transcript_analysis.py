@@ -10,34 +10,148 @@ from db import store_transcript_analyses
 
 load_dotenv()
 
+TRANSCRIPT_ANALYSIS_SYSTEM_MESSAGE = """
+    You are an internal support operations analyst for a movie theater chain.
+    Analyze the transcript and fill the structured fields. Use only the allowed enum values and numbers; keep text short except summary_of_issue.
+
+    Time (in seconds, estimate from message flow if not explicit):
+    - time_spent_with_chatbot_seconds: time user spent interacting with the chatbot only.
+    - time_spent_with_human_seconds: time user spent with a human agent only.
+    - time_spent_waiting_seconds: time waiting for reply or in queue.
+
+    Resolution:
+    - resolution_stage: how the chat ended (use ResolutionStage enum).
+
+    User tone (from wording and cues):
+    - user_sentiment: use UserSentiment enum.
+
+    Where resolution broke down (use not_applicable if that party resolved it):
+    - stage_chatbot_failed: at what point the chatbot could not resolve (use PointFailed enum).
+    - stage_human_failed: at what point the human could not resolve (use PointFailed enum; not_applicable if no human or human resolved).
+
+    Root cause and fix:
+    - reason_failed_to_resolve: if unresolved, pick the specific reason from the allowed enum ReasonFailed
+    - what_could_fix: what would have fixed this enum WhatCouldFix not_applicable if resolved.
+
+    Other:
+    - issuesIdentified: short list of issue labels (use IssueIdentified enum).
+    - summary_of_issue: 2–4 sentences on what happened and the outcome (only field that can be longer).
+    - issueIdentifiedByChatbot / issueIdentifiedByHumanAgent: true only if that agent clearly identified and stated the issue.
+    Be strict: only use enum values listed; estimate times from turn-taking when not stated.
+    """
+# Short enums for structured answers (no long text except summary)
+ResolutionStage = Literal[
+    "chatbot_resolved",
+    "human_resolved",
+    "unresolved",
+    "escalated_no_resolution",
+    "user_abandoned",
+    "transferred_only",
+    "partial_resolution",
+    "refund_processed",
+]
+UserSentiment = Literal["happy", "satisfied", "neutral", "frustrated", "irritated", "sad", "angry", "unknown"]
+PointFailed = Literal[
+    "not_applicable",
+    "could_not_identify",
+    "policy_denied",
+    "wrong_info",
+    "could_not_process",
+    "suggested_handoff_to_human",
+    "timeout_waiting_for_user_response",
+    "timeout_waiting_for_support_agent_response",
+    "timeout_waiting_for_chatbot_response",
+    "user_left_conversation",
+    "other",
+]
+ReasonFailed = Literal[
+    "not_applicable",
+    # Policy / business rules
+    "policy_violation",
+    "policy_does_not_allow_request",
+    "refund_window_expired",
+    "eligibility_criteria_not_met",
+    # System / technical
+    "system_error",
+    "payment_system_failure",
+    "booking_system_error",
+    "chatbot_or_integration_down",
+    "session_or_timeout_error",
+    # User left or disengaged
+    "user_left_conversation",
+    "user_abandoned_mid_flow",
+    "user_closed_chat_without_resolution",
+    # User-provided info issues
+    "user_misunderstanding_policy",
+    "user_provided_invalid_information",
+    "user_provided_incomplete_information",
+    "user_provided_wrong_account_or_order_details",
+    "user_request_outside_scope",
+    # Agent process / knowledge / capability
+    "agent_did_not_follow_process",
+    "agent_skipped_verification_step",
+    "agent_inadequate_knowledge",
+    "agent_lacked_authority_to_resolve",
+    "agent_inadequate_capabilities",
+    "agent_tool_or_system_access_limited",
+    # Chatbot knowledge / capability
+    "chatbot_inadequate_knowledge",
+    "chatbot_inadequate_capabilities",
+    "agent_could_not_access_user_data",
+    "agent_missing_tool_or_integration",
+    "chatbot_could_not_access_user_data",
+    "chatbot_missing_tool_or_integration",
+    # Agent/human communication failures (replacing vague "agent_miscommunication")
+    "agent_gave_incorrect_or_confusing_instructions",
+    "agent_misunderstood_user_request",
+    "agent_used_jargon_or_unclear_language",
+    "agent_failed_to_confirm_understanding",
+    # Chatbot communication failures (replacing "chatbot_miscommunication")
+    "chatbot_interpreted_request_incorrectly",
+    "chatbot_gave_ambiguous_or_wrong_response",
+    "chatbot_repeated_unhelpful_answer",
+    "chatbot_did_not_acknowledge_user_concern",
+    # User-side communication issues (replacing "user_miscommunication")
+    "user_request_was_ambiguous",
+    "user_changed_or_clarified_request_mid_flow",
+    "user_did_not_provide_required_details",
+    "user_expectations_mismatch",
+    "other",
+]
+WhatCouldFix = Literal[
+    "not_applicable",
+    "policy_change",
+    "chatbot_training",
+    "faster_handoff",
+    "clearer_messaging",
+    "tool_access",
+    "other",
+]
+
+
 class TranscriptAnalysis(BaseModel):
     transcriptId: str
-    issuesIdentified: list[str] # list of issues identified in the transcript
+    issuesIdentified: list[str]  # short labels, e.g. ["refund", "email not received"]
 
-    issueIdentificationTime: float # time taken to identify the issue in seconds
-    summary_of_issue: str
+    issueIdentificationTime: float  # seconds to identify issue
+    summary_of_issue: str  # only lengthy field: what happened and outcome
 
     issueIdentifiedByChatbot: bool
     issueIdentifiedByHumanAgent: bool
 
-    resolution_stage: Literal["chatbot_resolved", "human_agent_resolved", "unresolved"]
-    
-    time_spent_on_issue: float # time spent on the issue in seconds
-    bottleneck_category: Literal[
-        "policy_restriction",
-        "chatbot_knowledge_gap",
-        "chatbot_missing_tool_access",
-        "manual_approval_required",
-        "user_input_error",
-        "communication_error",
-        "unknown",
-    ]
-    user_feedback: Literal[
-        "positive",
-        "negative",
-        "neutral",
-        "unknown",
-    ]
+    time_spent_with_chatbot_seconds: float
+    time_spent_with_human_seconds: float
+    time_spent_waiting_seconds: float
+
+    resolution_stage: ResolutionStage
+
+    user_sentiment: UserSentiment  # from tone of user messages
+
+    stage_chatbot_failed: PointFailed  # at what point chatbot could not resolve (or not_applicable)
+    stage_human_failed: PointFailed  # at what point human could not resolve (or not_applicable)
+
+    reason_failed_to_resolve: ReasonFailed  # specific reason if unresolved
+    what_could_fix: WhatCouldFix  # what could have fixed this
 
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # This runnable forces the LLM to return JSON matching TranscriptAnalysis and parses it
@@ -45,23 +159,7 @@ structured_model = model.with_structured_output(TranscriptAnalysis)
 
 
 def analyze_transcript(transcript: str) -> TranscriptAnalysis:
-    system_message = """
-    You are an internal support operations analyst for a movie theater chain.
-    Analyze the provided support transcript and produce structured output.
-
-    Rules:
-    - Pick exactly one issue category
-    - Mark resolved=true only when the transcript clearly ends in a resolution
-    - resolution_stage must be chatbot, human_agent, or unresolved
-    - escalated_to_human=true if a human agent joined
-    - time_spent_on_issue is the total time spent on the issue in seconds
-    - issueIdentifiedByChatbot only if the issue is identified by the chatbot and it confirms the issue.
-    - issueIdentifiedByHumanAgent only if the issue is identified by the human agent and they confirm the issue.
-    - refund_related=true if the issue involves a refund or charge reversal
-    - Pick the most likely operational bottleneck
-    - Be concise and grounded only in the transcript
-    - In the summary_of_issue, mention the issue and what steps were taken to resolve it.
-    """
+    system_message = TRANSCRIPT_ANALYSIS_SYSTEM_MESSAGE
     path_to_transcript = f"assets/transcripts/{transcript}.txt"
     with open(path_to_transcript, "r") as file:
         transcript_content = file.read()
@@ -98,22 +196,3 @@ def transcript_analysis_node(state: dict) -> dict:
         import warnings
         warnings.warn(f"Could not store analyses in DB (skipping): {e}", stacklevel=0)
     return {"transcript_analysis": analysis}
-
-
-# if __name__ == "__main__":
-#     state = {"transcripts": ["transcript_01"]}
-#     update = transcript_analysis_node(state)
-#     transcript_analysis = update["transcript_analysis"]
-#     for analysis in transcript_analysis:
-#         print("-" * 100)
-#         print("Transcript Analysis:")
-#         print(f"Transcript ID: {analysis.transcriptId}")
-#         print(f"Issues Identified: {analysis.issuesIdentified}")
-#         print(f"Time Spent on Issue: {analysis.time_spent_on_issue} seconds")
-#         print(f"Summary of Issue: {analysis.summary_of_issue}")
-#         print(f"Issue Identified By Chatbot: {analysis.issueIdentifiedByChatbot}")
-#         print(f"Issue Identified By Human Agent: {analysis.issueIdentifiedByHumanAgent}")
-#         print(f"Resolution Stage: {analysis.resolution_stage}")
-#         print(f"Bottleneck Category: {analysis.bottleneck_category}")
-#         print(f"User Feedback: {analysis.user_feedback}")
-#         print("-" * 100)
