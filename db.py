@@ -74,8 +74,8 @@ def _ensure_table(conn):
                 time_spent_waiting_seconds DOUBLE PRECISION NOT NULL,
                 resolution_stage TEXT NOT NULL,
                 user_sentiment TEXT NOT NULL,
-                point_chatbot_failed TEXT NOT NULL,
-                point_human_failed TEXT NOT NULL,
+                stage_chatbot_failed TEXT NOT NULL,
+                stage_human_failed TEXT NOT NULL,
                 reason_failed_to_resolve TEXT NOT NULL,
                 what_could_fix TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -141,7 +141,7 @@ def get_transcript_analyses(
 ) -> list[dict]:
     """
     Query stored transcript analyses from the DB. Optional filters.
-    Returns list of dicts with new schema (time_spent_*, user_sentiment, point_*_failed, etc.).
+    Returns list of dicts with new schema (time_spent_*, user_sentiment, stage_*_failed, etc.).
     """
     with _connection() as conn:
         _ensure_table(conn)
@@ -163,7 +163,7 @@ def get_transcript_analyses(
                        issue_identified_by_human_agent,
                        time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
                        time_spent_waiting_seconds, resolution_stage, user_sentiment,
-                       point_chatbot_failed, point_human_failed,
+                       stage_chatbot_failed, stage_human_failed,
                        reason_failed_to_resolve, what_could_fix, created_at
                 FROM transcript_analyses
                 {where}
@@ -194,7 +194,7 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     issue_identified_by_human_agent,
                     time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
                     time_spent_waiting_seconds, resolution_stage, user_sentiment,
-                    point_chatbot_failed, point_human_failed,
+                    stage_chatbot_failed, stage_human_failed,
                     reason_failed_to_resolve, what_could_fix
                 ) VALUES (
                     %(transcriptId)s, %(issuesIdentified)s::jsonb, %(issueIdentificationTime)s,
@@ -202,7 +202,7 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     %(issueIdentifiedByHumanAgent)s,
                     %(time_spent_with_chatbot_seconds)s, %(time_spent_with_human_seconds)s,
                     %(time_spent_waiting_seconds)s, %(resolution_stage)s, %(user_sentiment)s,
-                    %(point_chatbot_failed)s, %(point_human_failed)s,
+                    %(stage_chatbot_failed)s, %(stage_human_failed)s,
                     %(reason_failed_to_resolve)s, %(what_could_fix)s
                 )
                 ON CONFLICT (transcript_id) DO UPDATE SET
@@ -216,8 +216,8 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     time_spent_waiting_seconds = EXCLUDED.time_spent_waiting_seconds,
                     resolution_stage = EXCLUDED.resolution_stage,
                     user_sentiment = EXCLUDED.user_sentiment,
-                    point_chatbot_failed = EXCLUDED.point_chatbot_failed,
-                    point_human_failed = EXCLUDED.point_human_failed,
+                    stage_chatbot_failed = EXCLUDED.stage_chatbot_failed,
+                    stage_human_failed = EXCLUDED.stage_human_failed,
                     reason_failed_to_resolve = EXCLUDED.reason_failed_to_resolve,
                     what_could_fix = EXCLUDED.what_could_fix
                 """,
@@ -234,8 +234,10 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                         "time_spent_waiting_seconds": float(a.get("time_spent_waiting_seconds", 0)),
                         "resolution_stage": a.get("resolution_stage", ""),
                         "user_sentiment": a.get("user_sentiment", "unknown"),
-                        "point_chatbot_failed": a.get("point_chatbot_failed", "not_applicable"),
-                        "point_human_failed": a.get("point_human_failed", "not_applicable"),
+                        "stage_chatbot_failed": a.get("stage_chatbot_failed")
+                        or a.get("point_chatbot_failed", "not_applicable"),
+                        "stage_human_failed": a.get("stage_human_failed")
+                        or a.get("point_human_failed", "not_applicable"),
                         "reason_failed_to_resolve": a.get("reason_failed_to_resolve", "not_applicable"),
                         "what_could_fix": a.get("what_could_fix", "not_applicable"),
                     }

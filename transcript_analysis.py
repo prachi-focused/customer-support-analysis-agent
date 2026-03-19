@@ -21,6 +21,7 @@ TRANSCRIPT_ANALYSIS_SYSTEM_MESSAGE = """
 
     Resolution:
     - resolution_stage: how the chat ended (use ResolutionStage enum).
+    - If a refund was issued, set resolution_stage to resolved.
 
     User tone (from wording and cues):
     - user_sentiment: use UserSentiment enum.
@@ -47,8 +48,7 @@ ResolutionStage = Literal[
     "escalated_no_resolution",
     "user_abandoned",
     "transferred_only",
-    "partial_resolution",
-    "refund_processed",
+    "partial_resolution"
 ]
 UserSentiment = Literal["happy", "satisfied", "neutral", "frustrated", "irritated", "sad", "angry", "unknown"]
 PointFailed = Literal[
@@ -175,6 +175,7 @@ class CustomerSupportProcess(MessagesState):
     """LangGraph state for the customer support workflow."""
     transcript_analysis: list["TranscriptAnalysis"] = []
     transcripts: list[str] = []
+    operations_metrics: dict = {}
 
 
 MAX_CONCURRENCY = 5
