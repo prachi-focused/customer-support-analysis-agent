@@ -5,7 +5,7 @@ from langgraph.graph import StateGraph, START, END
 from state import CustomerSupportProcess
 from transcript_analysis import transcript_analysis_node
 from policy_update import node_2_policy_update
-from calculate_metrics import node_3_calculate_metrics
+from calculate_metrics import node_3_calculate_operations_metrics
 from generate_report import node_4_generate_report
 
 load_dotenv()
@@ -29,13 +29,13 @@ def policy_update_router(state: dict) -> str:
     if raw in ("yes", "y"):
         return "node_2_policy_update"
     
-    return "node_3_calculate_metrics"
+    return "node_3_calculate_operations_metrics"
 
 
 builder = StateGraph(CustomerSupportProcess)
 builder.add_node("node_1_transcript_analysis", transcript_analysis_node)
 builder.add_node("node_2_policy_update", node_2_policy_update)
-builder.add_node("node_3_calculate_metrics", node_3_calculate_metrics)
+builder.add_node("node_3_calculate_operations_metrics", node_3_calculate_operations_metrics)
 builder.add_node("node_4_generate_report", node_4_generate_report)
 
 builder.add_edge(START, "node_1_transcript_analysis")
@@ -45,8 +45,8 @@ builder.add_conditional_edges(
     policy_update_router,
 )
 
-builder.add_edge("node_2_policy_update", "node_3_calculate_metrics")
-builder.add_edge("node_3_calculate_metrics", "node_4_generate_report")
+builder.add_edge("node_2_policy_update", "node_3_calculate_operations_metrics")
+builder.add_edge("node_3_calculate_operations_metrics", "node_4_generate_report")
 builder.add_edge("node_4_generate_report", END)
 
 graph = builder.compile()

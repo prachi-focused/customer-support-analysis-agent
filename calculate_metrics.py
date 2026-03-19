@@ -87,35 +87,23 @@ def compute_operations_metrics(analyses: list[Any]) -> dict[str, Any]:
         "resolution_stage_breakdown": build_resolution_stage_breakdown(stage_counts, total),
     }
 
-def compute_issues_metrics(analyses: list[Any]) -> dict[str, Any]:
-    return {
-        "issues_metrics": "",
-    }
 
-
-def node_3_calculate_metrics(state: dict) -> dict:
+def node_3_calculate_operations_metrics(state: dict) -> dict:
     print("Calculating metrics.......")
     analyses = state.get("transcript_analysis") or []
 
     try:
         
         operations_metrics = compute_operations_metrics(analyses)
+
         print("----------->>>>>><<<<<<<-------------")
         print(operations_metrics)
 
-        issues_metrics = compute_issues_metrics(analyses)
-        print("----------->>>>>><<<<<<<-------------")
-        print(issues_metrics)
-
-        payload = {
-            "operations_metrics": operations_metrics,
-            "issues_metrics": issues_metrics,
-        }
     except Exception as e:
-        payload = {
-            "operations_metrics": {},
-            "error": str(e),
-        }
+        print("----------->>>>>><<<<<<<-------------")
+        operations_metrics = 'Error: ' + str(e)
+        
+    return {
+        "operations_metrics": operations_metrics,
+    }
 
-
-    return payload
