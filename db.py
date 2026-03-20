@@ -76,7 +76,7 @@ def _ensure_table(conn):
                 user_sentiment TEXT NOT NULL,
                 stage_chatbot_failed TEXT NOT NULL,
                 stage_human_failed TEXT NOT NULL,
-                reason_failed_to_resolve TEXT NOT NULL,
+                failure_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
                 what_could_fix TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
@@ -136,12 +136,15 @@ def _vector_param(embedding: list[float]) -> str:
 def get_transcript_analyses(
     *,
     transcript_ids: list[str] | None = None,
-    resolution_stage: str | None = None,
+    resolution_stage: str | list[str] | frozenset[str] | set[str] | tuple[str, ...] | None = None,
     limit: int | None = None,
 ) -> list[dict]:
     """
     Query stored transcript analyses from the DB. Optional filters.
     Returns list of dicts with new schema (time_spent_*, user_sentiment, stage_*_failed, etc.).
+
+    ``resolution_stage`` may be a single stage string or a collection (e.g. resolved stages);
+    collections are matched with ``= ANY(%s)``.
     """
     with _connection() as conn:
         _ensure_table(conn)
@@ -151,9 +154,14 @@ def get_transcript_analyses(
             if transcript_ids:
                 conditions.append("transcript_id = ANY(%s)")
                 params.append(transcript_ids)
-            if resolution_stage:
-                conditions.append("resolution_stage = %s")
-                params.append(resolution_stage)
+            if resolution_stage is not None:
+                if isinstance(resolution_stage, str):
+                    conditions.append("resolution_stage = %s")
+                    params.append(resolution_stage)
+                else:
+                    stages = list(resolution_stage)
+                    conditions.append("resolution_stage = ANY(%s)")
+                    params.append(stages)
             where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
             limit_clause = f"LIMIT {int(limit)}" if limit is not None else ""
             cur.execute(
@@ -164,7 +172,7 @@ def get_transcript_analyses(
                        time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
                        time_spent_waiting_seconds, resolution_stage, user_sentiment,
                        stage_chatbot_failed, stage_human_failed,
-                       reason_failed_to_resolve, what_could_fix, created_at
+                       failure_reasons, what_could_fix, created_at
                 FROM transcript_analyses
                 {where}
                 ORDER BY created_at DESC
@@ -196,7 +204,7 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     time_spent_with_chatbot_seconds, time_spent_with_human_seconds,
                     time_spent_waiting_seconds, resolution_stage, user_sentiment,
                     stage_chatbot_failed, stage_human_failed,
-                    reason_failed_to_resolve, what_could_fix
+                    failure_reasons, what_could_fix
                 ) VALUES (
                     %(transcriptId)s, %(issuesIdentified)s::jsonb, %(issueIdentificationTime)s,
                     %(summary_of_issue)s, %(issueIdentifiedByChatbot)s,
@@ -204,7 +212,7 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     %(time_spent_with_chatbot_seconds)s, %(time_spent_with_human_seconds)s,
                     %(time_spent_waiting_seconds)s, %(resolution_stage)s, %(user_sentiment)s,
                     %(stage_chatbot_failed)s, %(stage_human_failed)s,
-                    %(reason_failed_to_resolve)s, %(what_could_fix)s
+                    %(failure_reasons)s::jsonb, %(what_could_fix)s
                 )
                 ON CONFLICT (transcript_id) DO UPDATE SET
                     issues_identified = EXCLUDED.issues_identified,
@@ -219,7 +227,7 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                     user_sentiment = EXCLUDED.user_sentiment,
                     stage_chatbot_failed = EXCLUDED.stage_chatbot_failed,
                     stage_human_failed = EXCLUDED.stage_human_failed,
-                    reason_failed_to_resolve = EXCLUDED.reason_failed_to_resolve,
+                    failure_reasons = EXCLUDED.failure_reasons,
                     what_could_fix = EXCLUDED.what_could_fix
                 """,
                 [
@@ -239,7 +247,10 @@ def store_transcript_analyses(analyses: list[dict]) -> None:
                         or a.get("point_chatbot_failed", "not_applicable"),
                         "stage_human_failed": a.get("stage_human_failed")
                         or a.get("point_human_failed", "not_applicable"),
-                        "reason_failed_to_resolve": a.get("reason_failed_to_resolve", "not_applicable"),
+                        "failure_reasons": json.dumps(
+                            a.get("failure_reasons", []),
+                            default=lambda o: o.value if hasattr(o, "value") else str(o),
+                        ),
                         "what_could_fix": a.get("what_could_fix", "not_applicable"),
                     }
                     for a in analyses

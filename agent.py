@@ -56,18 +56,22 @@ graph = builder.compile()
 
 # Invoke with messages and optional transcripts list
 transcripts = [
-    "transcript_01", 
-    "transcript_02", 
-    "transcript_03", 
+    "transcript_01",
+    "transcript_02",
+    "transcript_03",
     "transcript_04",
     "transcript_05",
     "transcript_06",
     "transcript_07",
     "transcript_08",
     "transcript_09",
-    "transcript_10"
+    "transcript_10",
+    "transcript_11",
+    "transcript_12",
+    "transcript_13",
+    "transcript_14",
 ]
-response = graph.invoke({"messages": message, "transcripts": transcripts})
+response = graph.invoke({"messages": message, "transcripts": transcripts, "path_to_transcripts": "assets/transcripts/"})
 # for analysis in response["transcript_analysis"]:
 #     print("-" * 100)
 #     print("Transcript Analysis:")
@@ -79,5 +83,5 @@ response = graph.invoke({"messages": message, "transcripts": transcripts})
 #     print(f"Time with chatbot: {analysis.time_spent_with_chatbot_seconds}s | with human: {analysis.time_spent_with_human_seconds}s | waiting: {analysis.time_spent_waiting_seconds}s")
 #     print(f"Resolution: {analysis.resolution_stage} | User sentiment: {analysis.user_sentiment}")
 #     print(f"Stage chatbot failed: {analysis.stage_chatbot_failed} | Stage human failed: {analysis.stage_human_failed}")
-#     print(f"Reason failed: {analysis.reason_failed_to_resolve} | What could fix: {analysis.what_could_fix}")
+#     print(f"Failure reasons: {analysis.failure_reasons} | What could fix: {analysis.what_could_fix}")
 #     print("-" * 100)

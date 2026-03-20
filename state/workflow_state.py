@@ -10,5 +10,6 @@ class CustomerSupportProcess(MessagesState):
 
     transcript_analysis: list[TranscriptAnalysis] = []
     transcripts: list[str] = []
+    path_to_transcripts: str = "assets/transcripts/"
     operations_metrics: dict = {}
     failure_metrics: dict = {}
