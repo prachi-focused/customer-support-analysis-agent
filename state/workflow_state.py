@@ -13,3 +13,4 @@ class CustomerSupportProcess(MessagesState):
     path_to_transcripts: str = "assets/transcripts/"
     operations_metrics: dict = {}
     failure_metrics: dict = {}
+    error: str = ""

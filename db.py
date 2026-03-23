@@ -7,6 +7,8 @@ Policy table needs `CREATE EXTENSION vector` once — see SETUP_DB.md.
 __all__ = [
     "store_transcript_analyses",
     "get_transcript_analyses",
+    "transcript_analyses_is_empty",
+    "policy_txt_chunks_is_empty",
     "store_policy_chunk_embeddings",
     "search_similar_policy_chunks",
 ]
@@ -132,6 +134,42 @@ def _vector_param(embedding: list[float]) -> str:
 # -----------------------------------------------------------------------------
 # Public API: use these from any node (e.g. node_1_transcript_analysis or other files)
 # -----------------------------------------------------------------------------
+
+
+def transcript_analyses_is_empty() -> bool:
+    """
+    True if ``transcript_analyses`` has no rows.
+    Ensures the table exists (a newly created table is treated as empty).
+    """
+    with _connection() as conn:
+        _ensure_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT NOT EXISTS (SELECT 1 FROM transcript_analyses LIMIT 1)"
+            )
+            row = cur.fetchone()
+            return bool(row[0]) if row else True
+
+
+def policy_txt_chunks_is_empty() -> bool:
+    """
+    True if ``policy_chunks`` has no rows for TXT policy ingest (``source = policy_txt``).
+    Matches TXT ingest in ``node_2_policy_update``. Ensures the table exists.
+    """
+    with _connection() as conn:
+        _ensure_policy_chunks_table(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT NOT EXISTS (
+                    SELECT 1 FROM policy_chunks WHERE source = %s LIMIT 1
+                )
+                """,
+                (POLICY_SOURCE_TXT,),
+            )
+            row = cur.fetchone()
+            return bool(row[0]) if row else True
+
 
 def get_transcript_analyses(
     *,

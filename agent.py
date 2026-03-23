@@ -3,11 +3,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 from state import CustomerSupportProcess
+from node_0_load_transcripts_from_db import node_0_load_transcripts_from_db
 from node_1_transcript_analysis import node_1_transcript_analysis
 from node_2_policy_update import node_2_policy_update
 from node_3_calculate_operations_metrics import node_3_calculate_operations_metrics
 from node_4_calculate_failure_metrics import node_4_calculate_failure_metrics
 from node_5_generate_report import node_5_generate_report
+from router import policy_update_router, transcript_source_router
 
 load_dotenv()
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -15,37 +17,17 @@ model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 message = [HumanMessage(content="Analyze the transcript and return the analysis.", role="user")]
 
 
-def policy_update_router(state: dict) -> str:
-    """
-    After transcript analysis: route by human input only.
-    Decides whether to update the policy store or skip it and go to calculate metrics.
-    Returns the next node name.
-    """
-    
-    raw = input("Update policy store? (yes/no): ").strip().lower()
-    while raw not in ("yes", "y", "no", "n"):
-        print("Invalid answer. Please enter yes or no.")
-        raw = input("Update policy store? (yes/no): ").strip().lower()
-    
-    if raw in ("yes", "y"):
-        return "node_2_policy_update"
-    
-    return "node_3_calculate_operations_metrics"
-
-
 builder = StateGraph(CustomerSupportProcess)
+builder.add_node("node_0_load_transcripts_from_db", node_0_load_transcripts_from_db)
 builder.add_node("node_1_transcript_analysis", node_1_transcript_analysis)
 builder.add_node("node_2_policy_update", node_2_policy_update)
 builder.add_node("node_3_calculate_operations_metrics", node_3_calculate_operations_metrics)
 builder.add_node("node_4_calculate_failure_metrics", node_4_calculate_failure_metrics)
 builder.add_node("node_5_generate_report", node_5_generate_report)
 
-builder.add_edge(START, "node_1_transcript_analysis")
-
-builder.add_conditional_edges(
-    "node_1_transcript_analysis",
-    policy_update_router,
-)
+builder.add_conditional_edges(START, transcript_source_router)
+builder.add_conditional_edges("node_1_transcript_analysis", policy_update_router)
+builder.add_conditional_edges("node_0_load_transcripts_from_db", policy_update_router)
 
 builder.add_edge("node_2_policy_update", "node_3_calculate_operations_metrics")
 builder.add_edge("node_3_calculate_operations_metrics", "node_4_calculate_failure_metrics")
