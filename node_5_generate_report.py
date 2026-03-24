@@ -3,10 +3,7 @@
 import os
 from datetime import datetime
 
-
-def generate_report(state: dict) -> str:
-    """Return the full Markdown document body. Format here or build from `state`."""
-    return "# Report\n\nReport generated successfully.\n"
+from generate_report_body import generate_report_body
 
 
 def _unique_report_path(report_dir: str) -> str:
@@ -24,7 +21,7 @@ def _unique_report_path(report_dir: str) -> str:
 def node_5_generate_report(state: dict) -> dict:
     print("Generating report.......")
     try:
-        markdown_body = generate_report(state)
+        markdown_body = generate_report_body(state)
 
         report_dir = "assets/reports"
         os.makedirs(report_dir, exist_ok=True)

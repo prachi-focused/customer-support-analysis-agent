@@ -68,7 +68,7 @@ def build_outcome_kpis(stage_counts: dict[str, int], total: int) -> dict[str, An
 def build_resolution_stage_breakdown(
     stage_counts: dict[str, int], total: int
 ) -> list[dict[str, Any]]:
-    ordered = list(_ORDERED_STAGES) + ["unknown"]
+    ordered = list(_ORDERED_STAGES)
     return [
         {
             "resolution_stage": stage,
