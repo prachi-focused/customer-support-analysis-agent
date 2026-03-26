@@ -1,4 +1,6 @@
 langgraph
+langgraph-cli[inmem]
+langsmith
 langchain-openai
 langchain-core
 langchain-text-splitters

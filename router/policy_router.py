@@ -3,13 +3,13 @@
 from db import policy_txt_chunks_is_empty
 
 
-def policy_update_router(state: dict) -> str:
+def policy_update_router(state: dict) -> str | list[str]:
     """
     If the policy vector store has no TXT-ingested chunks, run policy ingest first.
 
     Otherwise ask whether to update the policy store or skip to metrics.
 
-    Returns the next node name.
+    Returns next node(s): either policy update, or both metrics nodes in parallel.
     """
     try:
         if policy_txt_chunks_is_empty():
@@ -30,4 +30,7 @@ def policy_update_router(state: dict) -> str:
     if raw in ("yes", "y"):
         return "node_2_policy_update"
 
-    return "node_3_calculate_operations_metrics"
+    return [
+        "node_3_calculate_operations_metrics",
+        "node_4_calculate_failure_metrics",
+    ]

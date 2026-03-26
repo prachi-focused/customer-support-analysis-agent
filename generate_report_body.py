@@ -9,19 +9,19 @@ from typing import Any
 from state.transcript_analysis_schema import REASON_TO_CATEGORY
 
 OUTCOME_KPI_LABELS: dict[str, str] = {
-    "total_transcripts": "Transcripts analyzed in this batch",
-    "resolved_total": "Successfully resolved conversations",
-    "overall_resolution_rate_pct": "Overall resolution success rate",
-    "chatbot_resolved_count": "Fully resolved by the chatbot",
-    "human_resolved_count": "Fully resolved by a human agent",
-    "unresolved_count": "Still unresolved at conversation end",
-    "user_abandoned_count": "Users who abandoned the conversation",
-    "escalated_no_resolution_count": "Escalated but left unresolved",
-    "transferred_only_count": "Transferred only with no resolution",
-    "partial_resolution_count": "Partially resolved outcomes",
-    "unknown_stage_count": "Unknown or missing outcome stage",
-    "chatbot_resolved_rate_pct": "Share of volume resolved by chatbot",
-    "human_resolved_rate_pct": "Share of volume resolved by humans",
+    "total_transcripts": "Total transcripts analyzed",
+    "resolved_total": "# Transcripts resolved",
+    "overall_resolution_rate_pct": "Resolution success rate",
+    "chatbot_resolved_count": "# resolved by the chatbot",
+    "human_resolved_count": "# resolved by a human agent",
+    "unresolved_count": "# Unresolved Transcripts",
+    "user_abandoned_count": "# Users who abandoned the conversation",
+    "escalated_no_resolution_count": "# Escalated but left unresolved",
+    "transferred_only_count": "# Transferred only with no resolution",
+    "partial_resolution_count": "# Partially resolved outcomes",
+    "unknown_stage_count": "# Unknown or missing outcome stage",
+    "chatbot_resolved_rate_pct": "# Share of volume resolved by chatbot",
+    "human_resolved_rate_pct": "# Share of volume resolved by humans",
 }
 
 
@@ -75,9 +75,14 @@ def _md_table_metric_value_note(rows: list[tuple[str, str, str]]) -> str:
 
 def _outcome_kpis_table_rows(om: dict[str, Any]) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
-    for k in sorted(om.keys()):
-        label = OUTCOME_KPI_LABELS.get(k, _humanize_key(k))
-        rows.append((label, str(om[k])))
+    seen: set[str] = set()
+    for k in OUTCOME_KPI_LABELS:
+        if k in om:
+            rows.append((OUTCOME_KPI_LABELS[k], str(om[k])))
+            seen.add(k)
+    for k, v in om.items():
+        if k not in seen:
+            rows.append((OUTCOME_KPI_LABELS.get(k, _humanize_key(k)), str(v)))
     return rows
 
 

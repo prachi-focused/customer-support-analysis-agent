@@ -11,6 +11,9 @@ class CustomerSupportProcess(MessagesState):
     transcript_analysis: list[TranscriptAnalysis] = []
     transcripts: list[str] = []
     path_to_transcripts: str = "assets/transcripts/"
+    transcript_source_choice: str = ""
+    policy_update_choice: str = ""
     operations_metrics: dict = {}
     failure_metrics: dict = {}
     error: str = ""
+# too many things in state, need to clean up
