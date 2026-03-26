@@ -352,7 +352,4 @@ def generate_report_body(state: dict) -> str:
             sections.append("*No failure category data.*")
         sections.append("")
 
-    sections.append("---")
-    sections.append("")
-    sections.append("_Generated automatically by the support analysis system._")
     return "\n".join(sections)
